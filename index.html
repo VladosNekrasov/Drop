@@ -773,6 +773,7 @@ function enterApp(){ show('app'); setView(view); renderChips(); refresh(true);
 
 
 let storageOk=false;
+const pendingDel=new Set();   // файлы, которые уже убраны с экрана и удаляются в фоне
 async function ensureStorage(){
   if(storageOk) return;
   try{ await ghj(R()); }
@@ -786,13 +787,13 @@ async function ensureStorage(){
 async function refresh(first){
   if(first) $('#files').innerHTML = '<section class="day"><div class="day-items">'+Array.from({length:8},()=>'<div class="skel"></div>').join('')+'</div></section>';
   try{
-    await ensureStorage();
-    let arr=[];
-    try{ arr = await ghj(`${R()}/contents/files?ref=${encodeURIComponent(S.branch)}&t=${Date.now()}`); }
-    catch(e){ if(e.status!==404) throw e; }
-    files = (Array.isArray(arr)?arr:[]).filter(x=>x.type==='file').map(parse).sort((a,b)=>b.t-a.t);
-    render(); meter();
     loadClips();
+    const [, arr] = await Promise.all([
+      ensureStorage(),
+      ghj(`${R()}/contents/files?ref=${encodeURIComponent(S.branch)}&t=${Date.now()}`).catch(e=>{ if(e.status===404) return []; throw e; })
+    ]);
+    files = (Array.isArray(arr)?arr:[]).filter(x=>x.type==='file' && !pendingDel.has(x.path)).map(parse).sort((a,b)=>b.t-a.t);
+    render(); meter();
   }catch(e){
     if(e.status===401){ toast(explain(e),true); return logout(); }
     $('#files').innerHTML = `<div class="empty"><h3>Не получилось загрузить список</h3>${esc(explain(e))}</div>`;
@@ -915,7 +916,7 @@ function loadThumb(img){
   tq.push(img); pump();
 }
 function pump(){
-  while(tActive<4 && tq.length){
+  while(tActive<6 && tq.length){
     const img=tq.shift(), p=img.dataset.p, f=files.find(x=>x.path===p); if(!f) continue;
     tActive++;
     getBlob(f).then(b=>{ const u=URL.createObjectURL(b); thumbs.set(p,u);
@@ -1038,6 +1039,7 @@ async function loadClips(){
       if(x.type!=='file') continue;
       const m=x.name.match(/^(\d{13})/); const t=m?+m[1]:0;
       const item={path:x.path, sha:x.sha, t};
+      if(clipDeleting.has(x.path)) continue;
       if(!t || now-t>=CLIP_TTL) expired.push(item); else list.push(item);
     }
     list.sort((a,b)=>b.t-a.t);
@@ -1048,6 +1050,8 @@ async function loadClips(){
     }));
     const prev=new Set(clips.map(c=>c.sha));
     clips = list.map(c=>({...c, text:clipText.get(c.sha), fresh:!prev.has(c.sha)&&clips.length>0}));
+    pendingClips.forEach(pc=>{ if(!clips.some(c=>c.path===pc.path)) clips.push(pc); });
+    clips.sort((a,b)=>b.t-a.t);
     renderClips();
     const todo=expired.filter(c=>!clipDeleting.has(c.path));
     if(todo.length){
@@ -1109,8 +1113,9 @@ $('#clips').addEventListener('click', async e=>{
   }
   if(e.target.closest('.del')){
     clips=clips.filter(x=>x!==c); renderClips(); clipDeleting.add(c.path);
-    serial(()=>removeMany([c])).then(()=>toast('Удалено из буфера'))
-      .catch(err=>{ toast(explain(err),true); loadClips(); })
+    toast('Удалено из буфера');
+    serial(()=>removeMany([c]))
+      .catch(err=>{ toast('Не удалось удалить: '+explain(err),true); loadClips(); })
       .finally(()=>clipDeleting.delete(c.path));
     return;
   }
@@ -1123,21 +1128,25 @@ clipIn.addEventListener('input',fitClip);
 clipIn.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); $('#clipForm').requestSubmit(); } });
 $('#clipForm').onsubmit=e=>{ e.preventDefault(); const v=clipIn.value; if(!v.trim()) return clipIn.focus(); sendClip(v, true); };
 
-async function sendClip(text, fromBox){
+const pendingClips=new Map();   // отправленные, но ещё не подтверждённые GitHub записи
+function sendClip(text, fromBox){
   if(new Blob([text]).size > 900*1024){ toast('Слишком длинный текст, лучше закинь его файлом', true); return; }
-  const t=Date.now(), path=`clips/${t}.txt`, btn=$('#clipSend');
-  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
-  try{
-    const res = await serial(()=>ghj(`${R()}/contents/${encPath(path)}`,{method:'PUT',
-      body:JSON.stringify({message:'clip', content:utf8b64(text), branch:S.branch})}));
-    const sha=res.content&&res.content.sha;
-    if(sha) clipText.set(sha,text);
-    clips=[{path, sha, t, text, fresh:true}, ...clips.filter(c=>c.path!==path)];
-    renderClips();
-    if(fromBox){ clipIn.value=''; fitClip(); }
-    toast('Отправлено в буфер');
-  }catch(e){ toast(explain(e),true); }
-  finally{ btn.disabled=false; btn.innerHTML='<svg class="i"><use href="#i-up"/></svg>'; }
+  const t=Date.now(), path=`clips/${t}.txt`;
+  const item={path, sha:'pending-'+t, t, text, fresh:true};
+  pendingClips.set(path,item);
+  clips=[item, ...clips.filter(c=>c.path!==path)];
+  renderClips();
+  if(fromBox){ clipIn.value=''; fitClip(); }
+  toast('Отправлено в буфер');
+  serial(()=>ghj(`${R()}/contents/${encPath(path)}`,{method:'PUT',
+      body:JSON.stringify({message:'clip', content:utf8b64(text), branch:S.branch})}))
+    .then(res=>{ const sha=res.content&&res.content.sha; if(sha){ clipText.set(sha,text); item.sha=sha; } })
+    .catch(e=>{
+      clips=clips.filter(c=>c!==item); renderClips();
+      if(fromBox && !clipIn.value){ clipIn.value=text; fitClip(); }
+      toast('Не отправилось: '+explain(e),true);
+    })
+    .finally(()=>pendingClips.delete(path));
 }
 
 // живое обновление: новые записи с телефона подтягиваются сами, просроченные исчезают по таймеру
@@ -1237,13 +1246,20 @@ function confirmDelete(list){
   const m=modal(`<h3 style="overflow-wrap:anywhere">${title}</h3><p>Файл${list.length>1?'ы':''} пропадут со всех устройств. Вернуть не получится.</p>
     <div class="row"><button class="btn" data-close>Отмена</button><button class="btn danger solid" id="cDel">Удалить</button></div>`);
   const b=m.el.querySelector('#cDel'); b.focus();
-  b.onclick=async()=>{
-    b.disabled=true; b.innerHTML='<span class="spin"></span>';
-    try{ await serial(()=>removeMany(list)); m.close();
-      const set=new Set(list.map(f=>f.path)); files=files.filter(f=>!set.has(f.path));
-      if(selecting) setSelecting(false); else render(); meter();
-      toast(list.length===1?'Удалено':`Удалено: ${list.length}`);
-    }catch(e){ b.disabled=false; b.textContent='Удалить'; toast(explain(e),true); }
+  b.onclick=()=>{
+    m.close();
+    const set=new Set(list.map(f=>f.path));
+    list.forEach(f=>pendingDel.add(f.path));
+    files=files.filter(f=>!set.has(f.path));
+    if(selecting) setSelecting(false); else render(); meter();
+    toast(list.length===1?'Удалено':`Удалено: ${list.length}`);
+    serial(()=>removeMany(list))
+      .catch(e=>{ // не вышло: возвращаем файлы на место
+        const back=list.filter(f=>!files.some(x=>x.path===f.path));
+        files=[...files,...back].sort((a,b)=>b.t-a.t); render(); meter();
+        toast('Не удалось удалить: '+explain(e),true);
+      })
+      .finally(()=>list.forEach(f=>pendingDel.delete(f.path)));
   };
 }
 const plural=(n,a,b,c)=>{ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20) return c; if(n1>1&&n1<5) return b; if(n1===1) return a; return c; };
@@ -1251,10 +1267,9 @@ const plural=(n,a,b,c)=>{ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20) retur
 // Удаление одним коммитом без родителя: история схлопывается,
 // поэтому удалённые файлы реально освобождают место, а не копятся в истории git.
 async function removeMany(list){
-  const ref = await ghj(`${R()}/git/ref/heads/${encodeURIComponent(S.branch)}`);
-  const commit = await ghj(`${R()}/git/commits/${ref.object.sha}`);
+  const br = await ghj(`${R()}/branches/${encodeURIComponent(S.branch)}?t=${Date.now()}`);
   const tree = await ghj(`${R()}/git/trees`, {method:'POST', body:JSON.stringify({
-    base_tree:commit.tree.sha, tree:list.map(f=>({path:f.path, mode:'100644', type:'blob', sha:null}))})});
+    base_tree:br.commit.commit.tree.sha, tree:list.map(f=>({path:f.path, mode:'100644', type:'blob', sha:null}))})});
   const nc = await ghj(`${R()}/git/commits`, {method:'POST', body:JSON.stringify({message:'drop: snapshot', tree:tree.sha, parents:[]})});
   await gh(`${R()}/git/refs/heads/${encodeURIComponent(S.branch)}`, {method:'PATCH', body:JSON.stringify({sha:nc.sha, force:true})});
   list.forEach(f=>{ const u=thumbs.get(f.path); if(u){ URL.revokeObjectURL(u); thumbs.delete(f.path); } blobCache.delete(f.path); });
