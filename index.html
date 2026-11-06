@@ -60,6 +60,8 @@ a{color:var(--aqua)}
   color:var(--muted);transition:background .15s,color .15s}
 .icon-btn:hover{background:var(--surface-2);color:var(--text)}
 .icon-btn.on{color:var(--text);background:var(--surface-2)}
+.icon-btn.busy{color:var(--text);pointer-events:none}
+.icon-btn.busy svg{animation:rot .8s linear infinite}
 svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:13px;color:var(--muted);font-weight:500}
@@ -407,7 +409,7 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
       <span id="meterTxt">…</span>
       <div class="bar"><i id="meterBar"></i></div>
     </div>
-    <button class="icon-btn" id="refreshBtn" aria-label="Обновить"><svg class="i"><use href="#i-refresh"/></svg></button>
+    <button class="icon-btn" id="refreshBtn" aria-label="Обновить страницу" title="Обновить страницу"><svg class="i"><use href="#i-refresh"/></svg></button>
     <button class="icon-btn" id="settingsBtn" aria-label="Настройки"><svg class="i"><use href="#i-gear"/></svg></button>
     <button class="icon-btn" id="logoutBtn" aria-label="Заблокировать"><svg class="i"><use href="#i-lock"/></svg></button>
   </header>
@@ -1119,7 +1121,16 @@ $('#settingsBtn').onclick=()=>{
     }catch(x){ err.textContent = x.status ? explain(x) : x.message; btn.disabled=false; btn.textContent='Сменить пароль'; }
   };
 };
-$('#refreshBtn').onclick=()=>refresh();
+// Полная перезагрузка со свежей версией сайта в обход кэша (важно для иконки на рабочем столе)
+$('#refreshBtn').onclick=async()=>{
+  const b=$('#refreshBtn'); if(b.classList.contains('busy')) return;
+  b.classList.add('busy');
+  const base=location.pathname;
+  try{ await Promise.all([fetch(base,{cache:'reload'}), fetch(base+'index.html',{cache:'reload'})].map(p=>p.catch(()=>{}))); }catch{}
+  location.replace(base+'?v='+Date.now());
+};
+// убираем ?v=… из адреса после перезагрузки, чтобы он оставался чистым
+if(/[?&]v=\d+/.test(location.search)) history.replaceState(null,'',location.pathname+location.hash);
 function logout(){
   localStorage.removeItem(LS_SESSION); S=null; files=[]; clips=[]; clipText.clear(); thumbs.forEach(u=>URL.revokeObjectURL(u)); thumbs.clear(); blobCache.clear();
   $('#queue').innerHTML=''; if(selecting) setSelecting(false);
