@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E0C14">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Drop</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238F7CFF'/%3E%3Cstop offset='1' stop-color='%235BE0E0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='%2317141F'/%3E%3Cpath d='M32 12c8 11 14 18 14 26a14 14 0 0 1-28 0c0-8 6-15 14-26z' fill='url(%23g)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E0C14; --surface:#17141F; --surface-2:#1F1B2A; --surface-3:#272235;
+  --line:#2C2740; --text:#EEEAF6; --muted:#8F89A6; --dim:#5E5873;
+  --iris:#8F7CFF; --aqua:#5BE0E0; --danger:#FF6B81; --ok:#4ADE9B;
+  --grad:linear-gradient(135deg,var(--iris),var(--aqua));
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --display:'Unbounded',system-ui,sans-serif;
+  --body:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body);
+  -webkit-font-smoothing:antialiased;min-height:100%}
+body{min-height:100dvh;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+a{color:var(--aqua)}
+:focus-visible{outline:2px solid var(--aqua);outline-offset:2px;border-radius:8px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- ambient background ---------- */
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.glow::before,.glow::after{content:"";position:absolute;width:60vmax;height:60vmax;border-radius:50%;
+  filter:blur(90px);opacity:.16}
+.glow::before{background:var(--iris);top:-30vmax;left:-20vmax}
+.glow::after{background:var(--aqua);bottom:-35vmax;right:-25vmax;opacity:.1}
+
+/* ---------- buttons & inputs ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;
+  border-radius:var(--r-sm);background:var(--surface-2);font-weight:600;font-size:14px;
+  transition:background .15s,transform .1s;white-space:nowrap}
+.btn:hover{background:var(--surface-3)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--grad);color:#0E0C14}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger)}
+.btn.danger.solid{background:var(--danger);color:#1a0a0e}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.icon-btn{width:44px;height:44px;display:grid;place-items:center;border-radius:var(--r-sm);
+  color:var(--muted);transition:background .15s,color .15s}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+.icon-btn.on{color:var(--text);background:var(--surface-2)}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+.input{height:50px;padding:0 16px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);
+  outline:none;transition:border-color .15s,background .15s;width:100%;font-size:16px}
+.input:focus{border-color:var(--iris);background:var(--surface-3)}
+.hint{font-size:13px;color:var(--muted);line-height:1.55}
+.hint code{background:var(--surface-3);padding:1px 6px;border-radius:6px;font-size:12px;color:var(--text)}
+.err{color:var(--danger);font-size:14px;min-height:20px}
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;
+  animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ---------- lock & setup ---------- */
+.gate{position:relative;z-index:1;min-height:100dvh;display:grid;place-items:center;padding:24px}
+.gate-card{width:min(400px,100%);display:flex;flex-direction:column;gap:18px}
+.gate-card.wide{width:min(520px,100%)}
+.mark{font-family:var(--display);font-weight:700;font-size:clamp(64px,18vw,104px);line-height:.9;
+  letter-spacing:-.04em;margin:0 0 6px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gate-sub{color:var(--muted);margin:-6px 0 8px}
+.gate h2{font-family:var(--display);font-weight:500;font-size:26px;letter-spacing:-.02em;margin:0}
+.pw-wrap{position:relative}
+.pw-wrap .input{padding-right:52px}
+.pw-wrap .icon-btn{position:absolute;right:3px;top:3px}
+.check{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
+.check input{width:18px;height:18px;accent-color:var(--iris)}
+.steps{margin:0;padding-left:20px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.steps b{color:var(--text);font-weight:600}
+
+/* ---------- app shell ---------- */
+.app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px clamp(14px,3vw,36px) calc(110px + var(--safe-b))}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.logo{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:-.04em;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:auto}
+.meter{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--muted);margin-right:6px}
+.meter .bar{width:120px;height:4px;background:var(--surface-3);border-radius:4px;overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--grad);width:0;transition:width .4s}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start}
+.side{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
+
+/* the portal: the one memorable thing */
+.portal{position:relative;border-radius:var(--r-lg);padding:2px;cursor:pointer;isolation:isolate;
+  min-height:300px;display:flex}
+.portal::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;
+  background:conic-gradient(from var(--a,0deg),var(--iris),var(--aqua),transparent 40%,transparent 60%,var(--iris));
+  opacity:.55;animation:orbit 8s linear infinite;transition:opacity .2s}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes orbit{to{--a:360deg}}
+.portal-in{flex:1;border-radius:calc(var(--r-lg) - 2px);background:var(--surface);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px 20px;transition:background .2s}
+.portal:hover::before,.portal.over::before{opacity:1}
+.portal.over .portal-in{background:var(--surface-2)}
+.portal-orb{width:76px;height:76px;border-radius:50%;background:var(--grad);display:grid;place-items:center;
+  color:#0E0C14;box-shadow:0 0 0 10px rgba(143,124,255,.08),0 0 50px rgba(91,224,224,.25);transition:transform .25s}
+.portal.over .portal-orb{transform:scale(1.12)}
+.portal-orb svg{width:32px;height:32px;stroke-width:2.2}
+.portal-title{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.02em;margin:0}
+.portal-sub{color:var(--muted);font-size:13px;margin:0;max-width:240px}
+.kbd{display:inline-block;padding:0 6px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--text)}
+
+.queue{display:flex;flex-direction:column;gap:8px}
+.qi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:11px 14px}
+.qi-row{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.qi-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.qi-st{color:var(--muted);flex:none}
+.qi-bar{height:3px;background:var(--surface-3);border-radius:3px;margin-top:9px;overflow:hidden}
+.qi-bar i{display:block;height:100%;width:0;background:var(--grad);transition:width .15s}
+.qi.done .qi-bar i{background:var(--ok);width:100%}
+.qi.fail{border-color:rgba(255,107,129,.4)}
+.qi.fail .qi-bar i{background:var(--danger);width:100%}
+.qi.fail .qi-st{color:var(--danger)}
+
+/* toolbar */
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.search{position:relative;flex:1 1 220px}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--dim)}
+.search .input{height:44px;padding-left:42px;font-size:15px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:0 1 auto}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
+  color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap;transition:all .15s}
+.chip:hover{color:var(--text)}
+.chip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.chip .n{opacity:.6;margin-left:4px;font-weight:500}
+.views{display:flex;gap:2px;margin-left:auto}
+
+/* files: grid */
+.files.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;
+  cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;text-align:left;padding:0;min-width:0}
+.card:hover{border-color:var(--surface-3)}
+.card.sel{border-color:var(--iris);box-shadow:0 0 0 1px var(--iris)}
+.thumb{aspect-ratio:1;background:var(--surface-2);display:grid;place-items:center;position:relative;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}
+.thumb img.ld{opacity:1}
+.ext{font-family:var(--display);font-weight:500;font-size:20px;letter-spacing:-.02em;color:var(--kc,var(--muted));
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+.ext svg{width:30px;height:30px;stroke-width:1.5}
+.ext small{font-family:var(--body);font-size:11px;font-weight:700;letter-spacing:.04em}
+.k-image{--kc:#B4A8FF}.k-video{--kc:#FF9EC7}.k-audio{--kc:#FFC86B}.k-doc{--kc:#7FD4FF}.k-arch{--kc:#C9E36B}.k-other{--kc:var(--muted)}
+.play{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(255,158,199,.14);border:1px solid rgba(255,158,199,.35);
+  display:grid;place-items:center;color:#FF9EC7}
+.meta{padding:10px 12px 12px;min-width:0}
+.fname{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub{font-size:12px;color:var(--muted);margin-top:2px}
+.acts{position:absolute;top:8px;right:8px;display:flex;gap:6px;opacity:0;transition:opacity .15s}
+.card:hover .acts,.card:focus-within .acts{opacity:1}
+.act{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(14,12,20,.72);
+  backdrop-filter:blur(8px);color:var(--text)}
+.act:hover{background:var(--surface-3)}
+.act.del:hover{color:var(--danger)}
+.act svg{width:17px;height:17px}
+.tick{position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.7);
+  background:rgba(14,12,20,.4);display:none;place-items:center;color:#0E0C14}
+.selecting .tick{display:grid}
+.selecting .acts{display:none}
+.card.sel .tick{background:var(--iris);border-color:var(--iris)}
+.tick svg{width:14px;height:14px;stroke-width:3;opacity:0}
+.card.sel .tick svg{opacity:1}
+
+/* files: list */
+.files.list{display:flex;flex-direction:column;gap:6px}
+.files.list .card{flex-direction:row;align-items:center;gap:12px;padding:8px}
+.files.list .thumb{width:52px;height:52px;flex:none;aspect-ratio:auto;border-radius:10px}
+.files.list .ext{font-size:12px;gap:2px}.files.list .ext svg{width:20px;height:20px}.files.list .ext small{display:none}
+.files.list .play{width:24px;height:24px}.files.list .play svg{width:12px;height:12px}
+.files.list .meta{flex:1;padding:0}
+.files.list .acts{position:static;opacity:1}
+.files.list .act{background:transparent;color:var(--muted)}
+.files.list .act:hover{background:var(--surface-2);color:var(--text)}
+.files.list .tick{position:static;flex:none;order:-1;margin-left:4px}
+
+.empty{grid-column:1/-1;padding:70px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r-lg)}
+.empty h3{font-family:var(--display);font-weight:500;font-size:20px;color:var(--text);margin:0 0 6px;letter-spacing:-.02em}
+.skel{background:linear-gradient(90deg,var(--surface) 0,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;
+  animation:sh 1.3s infinite;border-radius:var(--r-md);aspect-ratio:.82}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* selection bar */
+.selbar{position:fixed;left:50%;bottom:calc(20px + var(--safe-b));transform:translateX(-50%);z-index:20;
+  display:flex;align-items:center;gap:8px;padding:8px 8px 8px 18px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.5);max-width:calc(100vw - 24px)}
+.selbar .cnt{font-weight:600;margin-right:6px;white-space:nowrap}
+
+/* mobile fab */
+.fab{position:fixed;right:18px;bottom:calc(20px + var(--safe-b));z-index:15;width:62px;height:62px;border-radius:20px;
+  background:var(--grad);color:#0E0C14;display:none;place-items:center;box-shadow:0 14px 34px rgba(143,124,255,.4)}
+.fab svg{width:28px;height:28px;stroke-width:2.2}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(8,6,12,.7);
+  backdrop-filter:blur(10px);animation:fade .18s}
+@keyframes fade{from{opacity:0}}
+.sheet{width:min(440px,100%);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:24px;display:flex;flex-direction:column;gap:16px;animation:pop .22s cubic-bezier(.2,.9,.3,1.2);max-height:90dvh;overflow:auto}
+@keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}}
+.sheet h3{margin:0;font-family:var(--display);font-weight:500;font-size:20px;letter-spacing:-.02em}
+.sheet p{margin:0;color:var(--muted)}
+.sheet .row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.sheet hr{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){text-align:right;overflow-wrap:anywhere}
+
+/* viewer */
+.viewer{position:fixed;inset:0;z-index:60;background:rgba(8,6,12,.94);display:flex;flex-direction:column;animation:fade .2s}
+.v-top{display:flex;align-items:center;gap:8px;padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top))}
+.v-name{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-name small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.v-body{flex:1;display:grid;place-items:center;padding:0 12px calc(16px + var(--safe-b));min-height:0;position:relative}
+.v-body img,.v-body video{max-width:100%;max-height:100%;border-radius:12px;object-fit:contain}
+.v-body audio{width:min(480px,100%)}
+.v-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;
+  background:rgba(31,27,42,.8);display:grid;place-items:center;color:var(--text)}
+.v-nav.prev{left:14px}.v-nav.next{right:14px}
+.v-load{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted)}
+
+/* toasts */
+.toasts{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;
+  width:min(420px,calc(100vw - 24px));pointer-events:none}
+.toast{background:var(--surface-3);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 16px;font-size:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.45);animation:pop .22s;display:flex;gap:10px;align-items:center;pointer-events:auto}
+.toast.bad{border-color:rgba(255,107,129,.45)}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.toast.bad .dot{background:var(--danger)}
+
+/* ---------- responsive ---------- */
+.mob-only{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr;gap:18px}
+  .side{position:static}
+  .portal{min-height:0}
+  .portal-in{flex-direction:row;justify-content:flex-start;text-align:left;padding:18px;gap:16px}
+  .portal-orb{width:56px;height:56px;flex:none;box-shadow:0 0 0 6px rgba(143,124,255,.08)}
+  .portal-orb svg{width:24px;height:24px}
+  .portal-title{font-size:18px}
+  .portal-sub{max-width:none}
+  .desk-only{display:none}
+  .mob-only{display:inline}
+}
+@media (max-width:640px){
+  .app{padding-top:14px}
+  .top{margin-bottom:16px;gap:4px}
+  .meter{display:none}
+  .fab{display:grid}
+  .tools{gap:8px}
+  .search{flex-basis:100%}
+  .chips{flex:1 1 0;min-width:0}
+  .views{flex:none}
+  .views{margin-left:0}
+  .files.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .acts{opacity:1}
+  .act{width:32px;height:32px}
+  .selbar{bottom:calc(14px + var(--safe-b));padding-left:14px}
+  .selbar .btn{padding:0 12px}
+  .selecting~.fab,.has-sel .fab{display:none}
+  .v-nav{display:none}
+}
+@media (hover:none){.acts{opacity:1}}
+@media (min-width:1600px){.files.grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}}
+@media (prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+
+<!-- SVG icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v13M6 11l6 6 6-6M5 20h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></symbol>
+  <symbol id="k-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="k-video" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="k-audio" viewBox="0 0 24 24"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
+  <symbol id="k-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="k-arch" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v2M12 7v2M12 11v2M10 15h4v3h-4z"/></symbol>
+  <symbol id="k-other" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+</svg>
+
+<!-- ========== LOCK ========== -->
+<main id="lock" class="gate" hidden>
+  <form class="gate-card" id="lockForm" autocomplete="on">
+    <h1 class="mark">drop</h1>
+    <p class="gate-sub">Твоё личное хранилище</p>
+    <input type="text" name="username" value="drop" autocomplete="username" hidden>
+    <div class="pw-wrap">
+      <label class="sr" for="lockPw">Пароль</label>
+      <input class="input" id="lockPw" type="password" placeholder="Пароль" autocomplete="current-password" required>
+      <button type="button" class="icon-btn" data-peek="lockPw" aria-label="Показать пароль"><svg class="i"><use href="#i-eye"/></svg></button>
+    </div>
+    <button class="btn primary" id="lockBtn" style="height:52px">Открыть</button>
+    <div class="err" id="lockErr" role="alert"></div>
+  </form>
+</main>
+
+<!-- ========== SETUP ========== -->
+<main id="setup" class="gate" hidden>
+  <form class="gate-card wide" id="setupForm">
+    <h1 class="mark" style="font-size:clamp(48px,12vw,72px)">drop</h1>
+    <h2>Первая настройка</h2>
+    <p class="hint" style="margin:0">Делается один раз. Файлы будут лежать в приватном репозитории на твоём GitHub,
+      а ключ доступа сохранится здесь в зашифрованном виде. Открыть его можно только паролем.</p>
+    <ol class="steps">
+      <li>Открой <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Fine-grained tokens</a></li>
+      <li>Expiration: <b>No expiration</b> (или год). Repository access: <b>All repositories</b> или выбери этот сайт и хранилище</li>
+      <li>Permissions → Repository → <b>Contents: Read and write</b>. Если хранилища ещё нет, добавь <b>Administration: Read and write</b></li>
+      <li>Сгенерируй и вставь токен ниже</li>
+    </ol>
+    <div class="field"><label for="setToken">GitHub-токен</label>
+      <input class="input" id="setToken" placeholder="github_pat_…" autocomplete="off" spellcheck="false" required></div>
+    <div class="field"><label for="setRepo">Репозиторий для файлов (будет приватным)</label>
+      <input class="input" id="setRepo" value="drop-storage" autocomplete="off" spellcheck="false" required></div>
+    <div id="siteFields" hidden>
+      <div class="field" style="margin-bottom:12px"><label for="setSite">Репозиторий этого сайта (owner/repo)</label>
+        <input class="input" id="setSite" placeholder="username/drop" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <div class="field"><label for="setPw">Пароль для входа</label>
+      <div class="pw-wrap">
+        <input class="input" id="setPw" type="password" minlength="8" autocomplete="new-password" required>
+        <button type="button" class="icon-btn" data-peek="setPw" aria-label="Показать пароль"><svg class="i"><use href="#i-eye"/></svg></button>
+      </div></div>
+    <div class="field"><label for="setPw2">Пароль ещё раз</label>
+      <input class="input" id="setPw2" type="password" minlength="8" autocomplete="new-password" required></div>
+    <p class="hint" style="margin:0">Минимум 8 символов. Зашифрованный ключ лежит в открытом репозитории сайта,
+      так что пароль вида <code>12345678</code> не годится. Возьми что-то длинное, но запоминаемое.</p>
+    <button class="btn primary" id="setupBtn" style="height:52px">Сохранить и войти</button>
+    <div class="err" id="setupErr" role="alert"></div>
+  </form>
+</main>
+
+<!-- ========== APP ========== -->
+<div id="app" class="app" hidden>
+  <header class="top">
+    <div class="logo">drop</div>
+    <div class="meter" title="Занято в репозитории">
+      <span id="meterTxt">…</span>
+      <div class="bar"><i id="meterBar"></i></div>
+    </div>
+    <button class="icon-btn" id="refreshBtn" aria-label="Обновить"><svg class="i"><use href="#i-refresh"/></svg></button>
+    <button class="icon-btn" id="settingsBtn" aria-label="Настройки"><svg class="i"><use href="#i-gear"/></svg></button>
+    <button class="icon-btn" id="logoutBtn" aria-label="Заблокировать"><svg class="i"><use href="#i-lock"/></svg></button>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <div class="portal" id="portal" role="button" tabindex="0" aria-label="Загрузить файлы">
+        <div class="portal-in">
+          <div class="portal-orb"><svg class="i"><use href="#i-up"/></svg></div>
+          <div>
+            <p class="portal-title">Закинуть файлы</p>
+            <p class="portal-sub"><span class="desk-only">Перетащи сюда, вставь через <span class="kbd">Ctrl</span>+<span class="kbd">V</span> или нажми, чтобы выбрать. До 100 МБ на файл.</span><span class="mob-only">Фото, видео, документы. До 100 МБ на файл.</span></p>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="picker" multiple hidden>
+      <div class="queue" id="queue" aria-live="polite"></div>
+    </aside>
+
+    <section>
+      <div class="tools">
+        <div class="search">
+          <svg class="i"><use href="#i-search"/></svg>
+          <label class="sr" for="q">Поиск</label>
+          <input class="input" id="q" type="search" placeholder="Найти файл" autocomplete="off">
+        </div>
+        <div class="chips" id="chips" role="tablist"></div>
+        <div class="views">
+          <button class="icon-btn" id="selectBtn" aria-label="Выбрать несколько"><svg class="i"><use href="#i-select"/></svg></button>
+          <button class="icon-btn" data-view="grid" aria-label="Плитка"><svg class="i"><use href="#i-grid"/></svg></button>
+          <button class="icon-btn" data-view="list" aria-label="Список"><svg class="i"><use href="#i-list"/></svg></button>
+        </div>
+      </div>
+      <div class="files grid" id="files"></div>
+    </section>
+  </div>
+
+  <button class="fab" id="fab" aria-label="Загрузить файлы"><svg class="i"><use href="#i-up"/></svg></button>
+  <div class="selbar" id="selbar" hidden>
+    <span class="cnt" id="selCnt">0</span>
+    <button class="btn" id="selAll">Все</button>
+    <button class="btn" id="selDl"><svg class="i"><use href="#i-down"/></svg><span class="desk-only">Скачать</span></button>
+    <button class="btn danger" id="selDel"><svg class="i"><use href="#i-trash"/></svg><span class="desk-only">Удалить</span></button>
+    <button class="icon-btn" id="selX" aria-label="Отменить выбор"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+const API = 'https://api.github.com';
+const MAX = 100 * 1024 * 1024;      // лимит GitHub на файл
+const SOFT_REPO = 1024 ** 3;          // рекомендованный размер репозитория
+const ITER = 600000;
+const LS_SESSION = 'drop.session.v1', LS_VIEW = 'drop.view';
+const $ = s => document.querySelector(s);
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+let S = null;          // {token, owner, repo, branch}
+let vault = null;      // зашифрованный конфиг с сайта
+let files = [];
+let filter = 'all', view = localStorage.getItem(LS_VIEW) || 'grid';
+let selecting = false; const selected = new Set();
+const thumbs = new Map();
+
+/* ---------------- utils ---------------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmt(b){ const u=['Б','КБ','МБ','ГБ']; let i=0; while(b>=1024&&i<3){b/=1024;i++} return (i?b.toFixed(b<10?1:0):b)+' '+u[i]; }
+function when(t){
+  if(!t) return '';
+  const d=(Date.now()-t)/1000;
+  if(d<60) return 'только что';
+  if(d<3600) return Math.floor(d/60)+' мин назад';
+  const dt=new Date(t), now=new Date();
+  const hm=dt.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+  if(dt.toDateString()===now.toDateString()) return 'сегодня, '+hm;
+  const y=new Date(now); y.setDate(now.getDate()-1);
+  if(dt.toDateString()===y.toDateString()) return 'вчера, '+hm;
+  return dt.toLocaleDateString('ru',{day:'numeric',month:'short',year:dt.getFullYear()===now.getFullYear()?undefined:'numeric'});
+}
+const extOf = n => (n.includes('.') ? n.split('.').pop() : '').toLowerCase();
+const KINDS = {
+  image:['jpg','jpeg','png','gif','webp','bmp','heic','heif','avif','svg','tif','tiff'],
+  video:['mp4','mov','webm','mkv','avi','m4v','3gp'],
+  audio:['mp3','m4a','wav','ogg','aac','flac','opus'],
+  doc:['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','ods','csv','md','djvu'],
+  arch:['zip','rar','7z','tar','gz'],
+};
+const kindOf = n => { const e=extOf(n); for(const k in KINDS) if(KINDS[k].includes(e)) return k; return 'other'; };
+const MIME = {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',avif:'image/avif',svg:'image/svg+xml',
+  heic:'image/heic',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm',mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',
+  ogg:'audio/ogg',aac:'audio/aac',flac:'audio/flac',opus:'audio/ogg',pdf:'application/pdf',txt:'text/plain'};
+const mimeOf = n => MIME[extOf(n)] || 'application/octet-stream';
+const PREVIEW_IMG = /^(jpe?g|png|gif|webp|bmp|avif|svg)$/;
+const canView = f => { const e=extOf(f.name); return PREVIEW_IMG.test(e) || ['mp4','m4v','webm','mov','mp3','m4a','wav','ogg','aac','flac','opus'].includes(e); };
+const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+const cleanName = n => (n||'file').replace(/[\\/]/g,'_').replace(/[\u0000-\u001f]/g,'').trim().slice(0,180) || 'file';
+
+function toast(msg, bad){
+  const el=document.createElement('div'); el.className='toast'+(bad?' bad':'');
+  el.innerHTML='<span class="dot"></span><span>'+esc(msg)+'</span>';
+  $('#toasts').append(el); setTimeout(()=>el.remove(), bad?6000:3000);
+}
+function show(id){ for(const x of ['lock','setup','app']) $('#'+x).hidden = x!==id; }
+
+/* ---------------- crypto ---------------- */
+const b64 = buf => { const a=new Uint8Array(buf); let s=''; for(let i=0;i<a.length;i+=0x8000) s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function deriveKey(pw, salt, iter){
+  const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'}, base, {name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
+}
+async function seal(obj, pw){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pw,salt,ITER);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, enc.encode(JSON.stringify(obj)));
+  return {v:1, kdf:'PBKDF2-SHA256', iter:ITER, salt:b64(salt), iv:b64(iv), data:b64(ct)};
+}
+async function unseal(v, pw){
+  const key=await deriveKey(pw, unb64(v.salt), v.iter);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(v.iv)}, key, unb64(v.data));
+  return JSON.parse(dec.decode(pt));
+}
+
+/* ---------------- github api ---------------- */
+async function gh(path, opts={}, token=S && S.token){
+  const r = await fetch(API+path, {cache:'no-store', ...opts, headers:{
+    'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28',
+    ...(opts.body?{'Content-Type':'application/json'}:{}), ...(opts.headers||{})}});
+  if(!r.ok){
+    let body={}; try{ body=await r.json(); }catch{}
+    const e=new Error(body.message||('HTTP '+r.status)); e.status=r.status; throw e;
+  }
+  return r;
+}
+const ghj = async (p,o,t) => (await gh(p,o,t)).json();
+const R = () => `/repos/${S.owner}/${S.repo}`;
+function explain(e){
+  if(e.status===401) return 'Токен недействителен или истёк. Создай новый в настройках GitHub.';
+  if(e.status===403) return 'У токена не хватает прав или упёрлись в лимит GitHub. '+(e.message||'');
+  if(e.status===404) return 'Репозиторий не найден или к нему нет доступа у токена.';
+  if(e.status===409) return 'Конфликт при записи, попробуй ещё раз.';
+  if(e.status===413||e.status===422) return 'GitHub отклонил запрос: '+(e.message||'');
+  if(e instanceof TypeError) return 'Нет связи с GitHub. Проверь интернет.';
+  return e.message || 'Что-то пошло не так';
+}
+
+// все записи в репозиторий идут строго по очереди, иначе GitHub ловит конфликты
+let chain = Promise.resolve();
+const serial = fn => { const p=chain.then(fn); chain=p.catch(()=>{}); return p; };
+
+/* ---------------- site config (vault.json) ---------------- */
+function detectSite(){
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/i);
+  if(!m) return null;
+  const owner=m[1], seg=location.pathname.split('/').filter(Boolean)[0];
+  return {owner, repo: seg && !seg.includes('.') ? seg : owner+'.github.io'};
+}
+async function loadVault(){
+  try{
+    const r = await fetch('vault.json?t='+Date.now(), {cache:'no-store'});
+    if(!r.ok) return null;
+    const v = await r.json(); return v && v.data ? v : null;
+  }catch{ return null; }
+}
+async function saveVault(v, site, token){
+  const path=`/repos/${site.owner}/${site.repo}/contents/vault.json`;
+  let sha; try{ sha=(await ghj(path,{},token)).sha; }catch(e){ if(e.status!==404) throw e; }
+  await gh(path,{method:'PUT',body:JSON.stringify({message:'drop: update vault',content:btoa(JSON.stringify(v,null,1)),...(sha?{sha}:{})})},token);
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(LS_SESSION)||'null');
+    if(saved && saved.token){ S=saved; enterApp(); vault = await loadVault(); return; }
+  }catch{}
+  vault = await loadVault();
+  if(vault){ show('lock'); setTimeout(()=>$('#lockPw').focus(),50); }
+  else { if(!detectSite()) $('#siteFields').hidden=false; show('setup'); }
+}
+
+document.addEventListener('click', e => {
+  const b=e.target.closest('[data-peek]'); if(!b) return;
+  const i=document.getElementById(b.dataset.peek); i.type = i.type==='password'?'text':'password';
+});
+
+$('#lockForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn=$('#lockBtn'), err=$('#lockErr'); err.textContent='';
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  try{
+    const cfg = await unseal(vault, $('#lockPw').value);
+    S = {token:cfg.token, owner:cfg.owner, repo:cfg.repo, branch:cfg.branch||'main', site:cfg.site};
+    localStorage.setItem(LS_SESSION, JSON.stringify(S));
+    $('#lockPw').value=''; enterApp();
+  }catch{
+    err.textContent='Неверный пароль'; $('#lockPw').select();
+  }finally{ btn.disabled=false; btn.textContent='Открыть'; }
+};
+
+$('#setupForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn=$('#setupBtn'), err=$('#setupErr'); err.textContent='';
+  const token=$('#setToken').value.trim(), repo=$('#setRepo').value.trim(), pw=$('#setPw').value;
+  if(pw!==$('#setPw2').value){ err.textContent='Пароли не совпадают'; return; }
+  let site = detectSite();
+  if(!site){ const [o,r]=($('#setSite').value.trim()).split('/'); if(!o||!r){ err.textContent='Укажи репозиторий сайта в виде owner/repo'; return; } site={owner:o,repo:r}; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Настраиваю…';
+  try{
+    const me = await ghj('/user',{},token);
+    let info;
+    try{ info = await ghj(`/repos/${me.login}/${repo}`,{},token); }
+    catch(x){
+      if(x.status!==404) throw x;
+      try{ info = await ghj('/user/repos',{method:'POST',body:JSON.stringify({name:repo,private:true,auto_init:true,description:'Drop file storage'})},token); }
+      catch(y){ throw new Error(`Не смог создать репозиторий «${repo}». Создай его вручную (приватный, с README) или дай токену право Administration.`); }
+      await new Promise(r=>setTimeout(r,1500));
+    }
+    const cfg = {token, owner:me.login, repo, branch:info.default_branch||'main', site};
+    const v = await seal(cfg, pw);
+    await saveVault(v, site, token);
+    vault=v; S=cfg;
+    localStorage.setItem(LS_SESSION, JSON.stringify(S));
+    toast('Готово. Теперь везде входишь только по паролю');
+    enterApp();
+  }catch(x){ err.textContent = x.status ? explain(x) : x.message; }
+  finally{ btn.disabled=false; btn.textContent='Сохранить и войти'; }
+};
+
+/* ---------------- app ---------------- */
+function enterApp(){ show('app'); setView(view); renderChips(); refresh(true); }
+
+let storageOk=false;
+async function ensureStorage(){
+  if(storageOk) return;
+  try{ await ghj(R()); }
+  catch(e){
+    if(e.status!==404) throw e;
+    await ghj('/user/repos',{method:'POST',body:JSON.stringify({name:S.repo,private:true,auto_init:true,description:'Drop file storage'})});
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  storageOk=true;
+}
+async function refresh(first){
+  if(first) $('#files').innerHTML = Array.from({length:8},()=>'<div class="skel"></div>').join('');
+  try{
+    await ensureStorage();
+    let arr=[];
+    try{ arr = await ghj(`${R()}/contents/files?ref=${encodeURIComponent(S.branch)}&t=${Date.now()}`); }
+    catch(e){ if(e.status!==404) throw e; }
+    files = (Array.isArray(arr)?arr:[]).filter(x=>x.type==='file').map(parse).sort((a,b)=>b.t-a.t);
+    render(); meter();
+  }catch(e){
+    if(e.status===401){ toast(explain(e),true); return logout(); }
+    $('#files').innerHTML = `<div class="empty"><h3>Не получилось загрузить список</h3>${esc(explain(e))}</div>`;
+  }
+}
+function parse(x){
+  const m = x.name.match(/^(\d{13})__(.+)$/);
+  return {path:x.path, sha:x.sha, size:x.size, raw:x.name, name:m?m[2]:x.name, t:m?+m[1]:0};
+}
+function meter(){
+  const total=files.reduce((a,f)=>a+f.size,0);
+  $('#meterTxt').textContent = `${fmt(total)} из ~1 ГБ`;
+  $('#meterBar').style.width = Math.min(100,total/SOFT_REPO*100)+'%';
+}
+
+const CHIPS=[['all','Все'],['image','Фото'],['video','Видео'],['doc','Документы'],['audio','Аудио'],['other','Другое']];
+function renderChips(){
+  const count = k => k==='all'?files.length : files.filter(f=>{const kk=kindOf(f.name); return k==='other'?(kk==='other'||kk==='arch'):kk===k;}).length;
+  $('#chips').innerHTML = CHIPS.filter(([k])=>k==='all'||count(k)>0||k===filter)
+    .map(([k,l])=>`<button class="chip${k===filter?' on':''}" data-k="${k}" role="tab" aria-selected="${k===filter}">${l}<span class="n">${count(k)||''}</span></button>`).join('');
+}
+$('#chips').onclick = e => { const c=e.target.closest('.chip'); if(!c) return; filter=c.dataset.k; render(); };
+$('#q').oninput = () => render();
+
+function visible(){
+  const q=$('#q').value.trim().toLowerCase();
+  return files.filter(f=>{
+    if(q && !f.name.toLowerCase().includes(q)) return false;
+    if(filter==='all') return true;
+    const k=kindOf(f.name); return filter==='other' ? (k==='other'||k==='arch') : k===filter;
+  });
+}
+
+function render(){
+  renderChips();
+  const list=visible(), box=$('#files');
+  box.classList.toggle('selecting', selecting);
+  if(!files.length){ box.innerHTML='<div class="empty"><h3>Тут пока пусто</h3>Закинь первый файл, и он появится здесь на всех твоих устройствах.</div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="empty"><h3>Ничего не нашлось</h3>Попробуй другой запрос или фильтр.</div>'; return; }
+  box.innerHTML = list.map(f=>{
+    const k=kindOf(f.name), e=extOf(f.name), img=PREVIEW_IMG.test(e)&&f.size<25e6;
+    const inner = img
+      ? `<img alt="" data-p="${esc(f.path)}">`
+      : k==='video' ? ''
+      : `<span class="ext k-${k}"><svg class="i"><use href="#k-${k}"/></svg><small>${esc(e.slice(0,5)||'file')}</small></span>`;
+    const play = k==='video' ? '<span class="play"><svg class="i" style="width:16px;height:16px"><use href="#i-play"/></svg></span>' : '';
+    return `<div class="card${selected.has(f.path)?' sel':''}" data-p="${esc(f.path)}" tabindex="0">
+      <span class="tick"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="thumb">${inner}${play}</div>
+      <div class="meta"><div class="fname" title="${esc(f.name)}">${esc(f.name)}</div><div class="fsub">${fmt(f.size)} · ${when(f.t)}</div></div>
+      <div class="acts">
+        <button class="act dl" aria-label="Скачать"><svg class="i"><use href="#i-down"/></svg></button>
+        <button class="act del" aria-label="Удалить"><svg class="i"><use href="#i-trash"/></svg></button>
+      </div></div>`;
+  }).join('');
+  box.querySelectorAll('img[data-p]').forEach(img=>io.observe(img));
+}
+
+/* lazy thumbnails */
+const tq=[]; let tActive=0;
+const io = new IntersectionObserver(es=>es.forEach(en=>{ if(en.isIntersecting){ io.unobserve(en.target); loadThumb(en.target); } }),{rootMargin:'300px'});
+function loadThumb(img){
+  const p=img.dataset.p;
+  if(thumbs.has(p)){ img.src=thumbs.get(p); img.classList.add('ld'); return; }
+  tq.push(img); pump();
+}
+function pump(){
+  while(tActive<4 && tq.length){
+    const img=tq.shift(), p=img.dataset.p, f=files.find(x=>x.path===p); if(!f) continue;
+    tActive++;
+    getBlob(f).then(b=>{ const u=URL.createObjectURL(b); thumbs.set(p,u);
+      document.querySelectorAll(`img[data-p="${CSS.escape(p)}"]`).forEach(i=>{ i.onload=()=>i.classList.add('ld'); i.src=u; });
+    }).catch(()=>{}).finally(()=>{ tActive--; pump(); });
+  }
+}
+
+/* card actions */
+$('#files').addEventListener('click', e => {
+  const card=e.target.closest('.card'); if(!card) return;
+  const f=files.find(x=>x.path===card.dataset.p); if(!f) return;
+  if(selecting){ toggleSel(f.path); return; }
+  if(e.target.closest('.dl')) return download(f);
+  if(e.target.closest('.del')) return confirmDelete([f]);
+  if(canView(f)) openViewer(f); else download(f);
+});
+$('#files').addEventListener('keydown', e => { if(e.key==='Enter' && e.target.classList.contains('card')) e.target.click(); });
+
+function setView(v){
+  view=v; localStorage.setItem(LS_VIEW,v);
+  $('#files').classList.toggle('grid',v==='grid'); $('#files').classList.toggle('list',v==='list');
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+
+/* selection */
+function setSelecting(on){
+  selecting=on; if(!on) selected.clear();
+  $('#selectBtn').classList.toggle('on',on); $('#selbar').hidden=!on;
+  $('#app').classList.toggle('has-sel',on); updSel(); render();
+}
+function toggleSel(p){ selected.has(p)?selected.delete(p):selected.add(p); updSel();
+  const c=document.querySelector(`.card[data-p="${CSS.escape(p)}"]`); if(c) c.classList.toggle('sel',selected.has(p)); }
+function updSel(){ $('#selCnt').textContent = selected.size ? `Выбрано: ${selected.size}` : 'Выбери файлы'; }
+$('#selectBtn').onclick=()=>setSelecting(!selecting);
+$('#selX').onclick=()=>setSelecting(false);
+$('#selAll').onclick=()=>{ const v=visible(); const all=v.every(f=>selected.has(f.path)); v.forEach(f=>all?selected.delete(f.path):selected.add(f.path)); updSel(); render(); };
+$('#selDl').onclick=async()=>{ const l=files.filter(f=>selected.has(f.path)); if(!l.length) return; for(const f of l){ await download(f); await new Promise(r=>setTimeout(r,400)); } };
+$('#selDel').onclick=()=>{ const l=files.filter(f=>selected.has(f.path)); if(l.length) confirmDelete(l); };
+
+/* ---------------- upload ---------------- */
+const picker=$('#picker'), portal=$('#portal');
+portal.onclick=()=>picker.click();
+portal.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); picker.click(); } };
+$('#fab').onclick=()=>picker.click();
+picker.onchange=()=>{ enqueue([...picker.files]); picker.value=''; };
+let dragDepth=0;
+window.addEventListener('dragenter',e=>{ if(!S||$('#app').hidden) return; e.preventDefault(); dragDepth++; portal.classList.add('over'); });
+window.addEventListener('dragover',e=>{ if(S) e.preventDefault(); });
+window.addEventListener('dragleave',()=>{ if(--dragDepth<=0){ dragDepth=0; portal.classList.remove('over'); } });
+window.addEventListener('drop',e=>{ if(!S||$('#app').hidden) return; e.preventDefault(); dragDepth=0; portal.classList.remove('over');
+  const fl=[...(e.dataTransfer.files||[])]; if(fl.length) enqueue(fl); });
+window.addEventListener('paste',e=>{
+  if(!S||$('#app').hidden||e.target.closest('input')) return;
+  const fl=[...(e.clipboardData.files||[])].map(f=>f.name&&f.name!=='image.png'?f:new File([f],`Скриншот ${new Date().toLocaleString('ru').replace(/[,:]/g,'-')}.${(f.type.split('/')[1]||'png')}`,{type:f.type}));
+  if(fl.length){ e.preventDefault(); enqueue(fl); }
+});
+
+function enqueue(list){
+  for(const file of list){
+    const el=document.createElement('div'); el.className='qi';
+    el.innerHTML=`<div class="qi-row"><span class="qi-name">${esc(file.name)}</span><span class="qi-st">в очереди</span></div><div class="qi-bar"><i></i></div>`;
+    $('#queue').prepend(el);
+    const st=el.querySelector('.qi-st'), bar=el.querySelector('i');
+    if(file.size>MAX){ el.classList.add('fail'); st.textContent='больше 100 МБ'; setTimeout(()=>el.remove(),9000); continue; }
+    serial(()=>uploadOne(file, p=>{ bar.style.width=(p*100).toFixed(1)+'%'; st.textContent = p<1 ? Math.round(p*100)+'%' : 'сохраняю…'; }, st))
+      .then(item=>{ el.classList.add('done'); st.textContent=fmt(file.size);
+        files=files.filter(f=>f.path!==item.path); files.unshift(item); render(); meter();
+        setTimeout(()=>el.remove(),3000); })
+      .catch(e=>{ el.classList.add('fail'); st.textContent='ошибка'; el.title=explain(e); toast(file.name+': '+explain(e),true);
+        if(e.status===401) logout(); setTimeout(()=>el.remove(),10000); });
+  }
+}
+function readB64(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=()=>rej(r.error); r.readAsDataURL(file); });
+}
+async function uploadOne(file, onp, st){
+  st.textContent='читаю…';
+  const content=await readB64(file);
+  const raw=`${Date.now()}__${cleanName(file.name)}`, path='files/'+raw;
+  const body=JSON.stringify({message:'upload '+cleanName(file.name), content, branch:S.branch});
+  for(let attempt=0;;attempt++){
+    try{
+      const resp = await xhrPut(`${API}${R()}/contents/${encPath(path)}`, body, onp);
+      const c = resp.content || {};
+      return {path:c.path||path, sha:c.sha, size:c.size??file.size, raw, name:cleanName(file.name), t:+raw.slice(0,13)};
+    }catch(e){ if(attempt<2 && (e.status===409||e.status>=500||e.status===0)){ await new Promise(r=>setTimeout(r,1200*(attempt+1))); continue; } throw e; }
+  }
+}
+function xhrPut(url, body, onp){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest(); x.open('PUT',url);
+    x.setRequestHeader('Authorization','Bearer '+S.token);
+    x.setRequestHeader('Accept','application/vnd.github+json');
+    x.setRequestHeader('Content-Type','application/json');
+    x.upload.onprogress=e=>{ if(e.lengthComputable) onp(e.loaded/e.total); };
+    x.onload=()=>{ let j={}; try{ j=JSON.parse(x.responseText); }catch{}
+      if(x.status>=200&&x.status<300) res(j); else { const e=new Error(j.message||('HTTP '+x.status)); e.status=x.status; rej(e); } };
+    x.onerror=()=>{ const e=new Error('Нет связи с GitHub'); e.status=0; rej(e); };
+    x.send(body);
+  });
+}
+
+/* ---------------- download ---------------- */
+async function getBlob(f, onp){
+  const r = await gh(`${R()}/contents/${encPath(f.path)}?ref=${encodeURIComponent(S.branch)}`, {headers:{Accept:'application/vnd.github.raw+json'}});
+  if(!onp || !r.body) return new Blob([await r.arrayBuffer()], {type:mimeOf(f.name)});
+  const rd=r.body.getReader(), chunks=[]; let got=0;
+  for(;;){ const {done,value}=await rd.read(); if(done) break; chunks.push(value); got+=value.length; onp(Math.min(1,got/(f.size||1))); }
+  return new Blob(chunks, {type:mimeOf(f.name)});
+}
+const blobCache = new Map();
+async function download(f){
+  const el=document.createElement('div'); el.className='qi';
+  el.innerHTML=`<div class="qi-row"><span class="qi-name">${esc(f.name)}</span><span class="qi-st">скачиваю…</span></div><div class="qi-bar"><i></i></div>`;
+  $('#queue').prepend(el); const bar=el.querySelector('i'), st=el.querySelector('.qi-st');
+  try{
+    const b = blobCache.get(f.path) || await getBlob(f, p=>{ bar.style.width=(p*100)+'%'; st.textContent=Math.round(p*100)+'%'; });
+    saveBlob(b, f.name);
+    el.classList.add('done'); st.textContent='готово'; setTimeout(()=>el.remove(),2500);
+  }catch(e){ el.classList.add('fail'); st.textContent='ошибка'; toast(explain(e),true); setTimeout(()=>el.remove(),8000); }
+}
+function saveBlob(b, name){
+  const u=URL.createObjectURL(b), a=document.createElement('a');
+  a.href=u; a.download=name; document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+}
+
+/* ---------------- delete ---------------- */
+function modal(html){
+  const m=document.createElement('div'); m.className='modal'; m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  const close=()=>{ m.remove(); document.removeEventListener('keydown',onKey); };
+  const onKey=e=>{ if(e.key==='Escape') close(); };
+  m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) close(); });
+  document.addEventListener('keydown',onKey); document.body.append(m);
+  return {el:m, close};
+}
+function confirmDelete(list){
+  const title = list.length===1 ? `Удалить «${esc(list[0].name)}»?` : `Удалить ${list.length} файл${plural(list.length,'','а','ов')}?`;
+  const m=modal(`<h3 style="overflow-wrap:anywhere">${title}</h3><p>Файл${list.length>1?'ы':''} пропадут со всех устройств. Вернуть не получится.</p>
+    <div class="row"><button class="btn" data-close>Отмена</button><button class="btn danger solid" id="cDel">Удалить</button></div>`);
+  const b=m.el.querySelector('#cDel'); b.focus();
+  b.onclick=async()=>{
+    b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    try{ await serial(()=>removeMany(list)); m.close();
+      const set=new Set(list.map(f=>f.path)); files=files.filter(f=>!set.has(f.path));
+      if(selecting) setSelecting(false); else render(); meter();
+      toast(list.length===1?'Удалено':`Удалено: ${list.length}`);
+    }catch(e){ b.disabled=false; b.textContent='Удалить'; toast(explain(e),true); }
+  };
+}
+const plural=(n,a,b,c)=>{ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20) return c; if(n1>1&&n1<5) return b; if(n1===1) return a; return c; };
+
+// Удаление одним коммитом без родителя: история схлопывается,
+// поэтому удалённые файлы реально освобождают место, а не копятся в истории git.
+async function removeMany(list){
+  const ref = await ghj(`${R()}/git/ref/heads/${encodeURIComponent(S.branch)}`);
+  const commit = await ghj(`${R()}/git/commits/${ref.object.sha}`);
+  const tree = await ghj(`${R()}/git/trees`, {method:'POST', body:JSON.stringify({
+    base_tree:commit.tree.sha, tree:list.map(f=>({path:f.path, mode:'100644', type:'blob', sha:null}))})});
+  const nc = await ghj(`${R()}/git/commits`, {method:'POST', body:JSON.stringify({message:'drop: snapshot', tree:tree.sha, parents:[]})});
+  await gh(`${R()}/git/refs/heads/${encodeURIComponent(S.branch)}`, {method:'PATCH', body:JSON.stringify({sha:nc.sha, force:true})});
+  list.forEach(f=>{ const u=thumbs.get(f.path); if(u){ URL.revokeObjectURL(u); thumbs.delete(f.path); } blobCache.delete(f.path); });
+}
+
+/* ---------------- viewer ---------------- */
+let vEl=null, vIdx=0, vList=[];
+function openViewer(f){
+  vList=visible().filter(canView); vIdx=vList.findIndex(x=>x.path===f.path);
+  if(!vEl){
+    vEl=document.createElement('div'); vEl.className='viewer';
+    vEl.innerHTML=`<div class="v-top"><div class="v-name"></div>
+      <button class="icon-btn" data-a="dl" aria-label="Скачать"><svg class="i"><use href="#i-down"/></svg></button>
+      <button class="icon-btn" data-a="del" aria-label="Удалить"><svg class="i"><use href="#i-trash"/></svg></button>
+      <button class="icon-btn" data-a="x" aria-label="Закрыть"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="v-body"></div>`;
+    vEl.addEventListener('click',e=>{
+      const a=e.target.closest('[data-a]')?.dataset.a, cur=vList[vIdx];
+      if(a==='x'||e.target.classList.contains('v-body')) closeViewer();
+      else if(a==='dl') download(cur);
+      else if(a==='del'){ closeViewer(); confirmDelete([cur]); }
+      else if(a==='prev') step(-1); else if(a==='next') step(1);
+    });
+    let sx=null; vEl.addEventListener('touchstart',e=>{ sx=e.touches[0].clientX; },{passive:true});
+    vEl.addEventListener('touchend',e=>{ if(sx==null) return; const dx=e.changedTouches[0].clientX-sx; if(Math.abs(dx)>60) step(dx<0?1:-1); sx=null; });
+  }
+  document.body.append(vEl); document.addEventListener('keydown',vKey); paintViewer();
+}
+function closeViewer(){ vEl.querySelector('.v-body').innerHTML=''; vEl.remove(); document.removeEventListener('keydown',vKey); }
+function vKey(e){ if(e.key==='Escape') closeViewer(); if(e.key==='ArrowLeft') step(-1); if(e.key==='ArrowRight') step(1); }
+function step(d){ if(vList.length<2) return; vIdx=(vIdx+d+vList.length)%vList.length; paintViewer(); }
+async function paintViewer(){
+  const f=vList[vIdx], body=vEl.querySelector('.v-body'), k=kindOf(f.name);
+  vEl.querySelector('.v-name').innerHTML=`${esc(f.name)}<small>${fmt(f.size)} · ${when(f.t)}${vList.length>1?` · ${vIdx+1} из ${vList.length}`:''}</small>`;
+  const nav = vList.length>1 ? `<button class="v-nav prev" data-a="prev" aria-label="Назад"><svg class="i"><use href="#i-left"/></svg></button><button class="v-nav next" data-a="next" aria-label="Вперёд"><svg class="i"><use href="#i-right"/></svg></button>` : '';
+  body.innerHTML=`<div class="v-load"><span class="spin"></span><span class="pct">Загружаю…</span></div>${nav}`;
+  try{
+    let b=blobCache.get(f.path);
+    if(!b){ b=await getBlob(f, p=>{ const el=body.querySelector('.pct'); if(el) el.textContent=Math.round(p*100)+'%'; }); blobCache.set(f.path,b); if(blobCache.size>12) blobCache.delete(blobCache.keys().next().value); }
+    if(vList[vIdx]!==f) return;
+    const u=URL.createObjectURL(b);
+    const media = k==='image' ? `<img src="${u}" alt="${esc(f.name)}">`
+      : k==='video' ? `<video src="${u}" controls autoplay playsinline></video>`
+      : `<audio src="${u}" controls autoplay></audio>`;
+    body.innerHTML = media + nav;
+  }catch(e){ body.innerHTML=`<div class="v-load">${esc(explain(e))}</div>${nav}`; }
+}
+
+/* ---------------- settings ---------------- */
+$('#settingsBtn').onclick=()=>{
+  const m=modal(`<h3>Настройки</h3>
+    <div class="kv"><span>Хранилище</span><span>${esc(S.owner)}/${esc(S.repo)}</span>
+    <span>Файлов</span><span>${files.length}</span><span>Занято</span><span>${fmt(files.reduce((a,f)=>a+f.size,0))}</span></div>
+    <p class="hint">GitHub пускает файлы до 100 МБ, а репозиторий лучше держать до 1 ГБ. Удаление сразу чистит историю, так что место освобождается.</p>
+    <hr>
+    <form id="cpForm" style="display:flex;flex-direction:column;gap:12px">
+      <strong>Сменить пароль</strong>
+      <input class="input" id="cpOld" type="password" placeholder="Текущий пароль" autocomplete="current-password" required>
+      <input class="input" id="cpNew" type="password" placeholder="Новый пароль, от 8 символов" minlength="8" autocomplete="new-password" required>
+      <div class="err" id="cpErr"></div>
+      <div class="row"><button type="button" class="btn" data-close>Закрыть</button><button class="btn primary" id="cpBtn">Сменить пароль</button></div>
+    </form>`);
+  m.el.querySelector('#cpForm').onsubmit=async e=>{
+    e.preventDefault(); const err=m.el.querySelector('#cpErr'), btn=m.el.querySelector('#cpBtn'); err.textContent='';
+    btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    try{
+      const v = vault || await loadVault(); if(!v) throw new Error('Не нашёл vault.json на сайте');
+      let cfg; try{ cfg=await unseal(v, m.el.querySelector('#cpOld').value); }catch{ throw new Error('Текущий пароль неверный'); }
+      const site = cfg.site || detectSite(); if(!site) throw new Error('Не понял, в каком репозитории лежит сайт');
+      const nv = await seal({...cfg, token:S.token, site}, m.el.querySelector('#cpNew').value);
+      await saveVault(nv, site, S.token); vault=nv;
+      m.close(); toast('Пароль сменён. На сайте обновится через минуту');
+    }catch(x){ err.textContent = x.status ? explain(x) : x.message; btn.disabled=false; btn.textContent='Сменить пароль'; }
+  };
+};
+$('#refreshBtn').onclick=()=>refresh();
+function logout(){
+  localStorage.removeItem(LS_SESSION); S=null; files=[]; thumbs.forEach(u=>URL.revokeObjectURL(u)); thumbs.clear(); blobCache.clear();
+  $('#queue').innerHTML=''; if(selecting) setSelecting(false);
+  boot();
+}
+$('#logoutBtn').onclick=logout;
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && S && !$('#app').hidden) refresh(); });
+
+boot();
+})();
+</script>
+</body>
+</html>
