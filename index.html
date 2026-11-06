@@ -102,11 +102,13 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .meter .bar i{display:block;height:100%;background:var(--grad);width:0;transition:width .4s}
 .layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:28px;align-items:start}
 .layout>*{min-width:0}
-.side{position:sticky;top:calc(92px + var(--safe-t));display:flex;flex-direction:column;gap:16px}
+.side{position:sticky;top:calc(92px + var(--safe-t));display:flex;flex-direction:column;gap:16px;
+  max-height:calc(100dvh - 112px - var(--safe-t));overflow-y:auto;scrollbar-width:none}
+.side::-webkit-scrollbar{display:none}
 
 /* the portal: the one memorable thing */
 .portal{position:relative;border-radius:var(--r-lg);padding:2px;cursor:pointer;isolation:isolate;
-  min-height:300px;display:flex}
+  min-height:240px;display:flex;flex:none}
 .portal::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;
   background:conic-gradient(from var(--a,0deg),var(--iris),var(--aqua),transparent 40%,transparent 60%,var(--iris));
   opacity:.55;animation:orbit 8s linear infinite;transition:opacity .2s}
@@ -250,11 +252,42 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .toast .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
 .toast.bad .dot{background:var(--danger)}
 
+/* clipboard */
+.clipbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;display:flex;flex-direction:column;gap:12px}
+.clip-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.clip-title{font-family:var(--display);font-weight:500;font-size:17px;letter-spacing:-.02em}
+.clip-ttl{font-size:12px;color:var(--muted)}
+.clip-compose{display:flex;gap:8px;align-items:flex-end}
+.clip-compose textarea{flex:1;min-width:0;resize:none;min-height:44px;max-height:160px;padding:11px 14px;border-radius:var(--r-sm);
+  background:var(--surface-2);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;line-height:1.4;outline:none;
+  transition:border-color .15s,background .15s}
+.clip-compose textarea:focus{border-color:var(--iris);background:var(--surface-3)}
+.clip-compose .btn{flex:none;width:44px;padding:0}
+.clips{display:flex;flex-direction:column;gap:8px;max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
+.clip{background:var(--surface-2);border-radius:var(--r-md);padding:12px 12px 10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.clip.new{animation:pop .25s}
+.clip-text{font-size:14.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;user-select:text}
+.clip.open .clip-text{display:block;-webkit-line-clamp:unset}
+.clip-text a{color:var(--aqua);text-decoration:underline;text-underline-offset:2px}
+.clip-foot{display:flex;align-items:center;gap:6px}
+.clip-meta{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip-meta .soon{color:#FFC86B}
+.clip .btn{height:34px;padding:0 12px;font-size:13px;background:var(--surface-3)}
+.clip .btn.ok{background:var(--ok);color:#0E0C14}
+.clip .act{width:34px;height:34px;background:transparent;color:var(--muted)}
+.clip .act:hover{background:var(--surface-3);color:var(--danger)}
+.clip-more{display:none;width:100%;height:38px;font-size:13px;color:var(--muted)}
+.clip-empty{font-size:13px;color:var(--muted);text-align:center;padding:14px 8px;border:1px dashed var(--line);border-radius:var(--r-md)}
+
 /* ---------- responsive ---------- */
 .mob-only{display:none}
 @media (max-width:1000px){
   .layout{grid-template-columns:minmax(0,1fr);gap:18px}
-  .side{position:static}
+  .side{position:static;max-height:none;overflow:visible}
+  .clips{max-height:none;overflow:visible}
+  .clips:not(.all) .clip:nth-child(n+4){display:none}
+  .clip-more:not([hidden]){display:flex}
   .portal{min-height:0}
   .portal-in{flex-direction:row;justify-content:flex-start;text-align:left;padding:18px;gap:16px}
   .portal-orb{width:56px;height:56px;flex:none;box-shadow:0 0 0 6px rgba(143,124,255,.08)}
@@ -392,6 +425,16 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
       </div>
       <input type="file" id="picker" multiple hidden>
       <div class="queue" id="queue" aria-live="polite"></div>
+      <section class="clipbox" aria-labelledby="clipTitle">
+        <div class="clip-head"><span class="clip-title" id="clipTitle">Буфер</span><span class="clip-ttl">хранится 1 час</span></div>
+        <form class="clip-compose" id="clipForm">
+          <label class="sr" for="clipIn">Текст для буфера</label>
+          <textarea id="clipIn" rows="1" placeholder="Текст для другого устройства" maxlength="200000"></textarea>
+          <button class="btn primary" id="clipSend" aria-label="Отправить в буфер"><svg class="i"><use href="#i-up"/></svg></button>
+        </form>
+        <div class="clips" id="clips" aria-live="polite"></div>
+        <button class="btn clip-more" id="clipMore" type="button" hidden></button>
+      </section>
     </aside>
 
     <section>
@@ -610,6 +653,7 @@ $('#setupForm').onsubmit = async e => {
 /* ---------------- app ---------------- */
 function enterApp(){ show('app'); setView(view); renderChips(); refresh(true); }
 
+
 let storageOk=false;
 async function ensureStorage(){
   if(storageOk) return;
@@ -630,6 +674,7 @@ async function refresh(first){
     catch(e){ if(e.status!==404) throw e; }
     files = (Array.isArray(arr)?arr:[]).filter(x=>x.type==='file').map(parse).sort((a,b)=>b.t-a.t);
     render(); meter();
+    loadClips();
   }catch(e){
     if(e.status===401){ toast(explain(e),true); return logout(); }
     $('#files').innerHTML = `<div class="empty"><h3>Не получилось загрузить список</h3>${esc(explain(e))}</div>`;
@@ -752,10 +797,150 @@ window.addEventListener('dragleave',()=>{ if(--dragDepth<=0){ dragDepth=0; porta
 window.addEventListener('drop',e=>{ if(!S||$('#app').hidden) return; e.preventDefault(); dragDepth=0; portal.classList.remove('over');
   const fl=[...(e.dataTransfer.files||[])]; if(fl.length) enqueue(fl); });
 window.addEventListener('paste',e=>{
-  if(!S||$('#app').hidden||e.target.closest('input')) return;
+  if(!S||$('#app').hidden||e.target.closest('input,textarea,[contenteditable]')) return;
   const fl=[...(e.clipboardData.files||[])].map(f=>f.name&&f.name!=='image.png'?f:new File([f],`Скриншот ${new Date().toLocaleString('ru').replace(/[,:]/g,'-')}.${(f.type.split('/')[1]||'png')}`,{type:f.type}));
-  if(fl.length){ e.preventDefault(); enqueue(fl); }
+  if(fl.length){ e.preventDefault(); enqueue(fl); return; }
+  const txt=e.clipboardData.getData('text/plain');
+  if(txt && txt.trim()){ e.preventDefault(); sendClip(txt); }
 });
+
+/* ---------------- clipboard ---------------- */
+const CLIP_TTL = 60*60*1000;
+let clips = [];                 // {path, sha, t, text}
+const clipText = new Map();     // sha -> text
+const clipDeleting = new Set();
+let clipLoading = false;
+
+function utf8b64(str){ return b64(enc.encode(str)); }
+function linkify(escaped){
+  return escaped.replace(/\bhttps?:\/\/[^\s<>"']+/g, u=>{
+    const clean=u.replace(/[).,;:!?]+$/,''), tail=u.slice(clean.length);
+    return `<a href="${clean}" target="_blank" rel="noopener noreferrer">${clean}</a>${tail}`;
+  });
+}
+function left(t){
+  const ms=t+CLIP_TTL-Date.now();
+  if(ms<=0) return '';
+  const m=Math.ceil(ms/60000);
+  return m<=5 ? `<span class="soon">ещё ${m} мин</span>` : `ещё ${m} мин`;
+}
+
+async function loadClips(){
+  if(!S || clipLoading) return;
+  clipLoading=true;
+  try{
+    let arr=[];
+    try{ arr = await ghj(`${R()}/contents/clips?ref=${encodeURIComponent(S.branch)}&t=${Date.now()}`); }
+    catch(e){ if(e.status!==404) throw e; }
+    const now=Date.now(), list=[], expired=[];
+    for(const x of (Array.isArray(arr)?arr:[])){
+      if(x.type!=='file') continue;
+      const m=x.name.match(/^(\d{13})/); const t=m?+m[1]:0;
+      const item={path:x.path, sha:x.sha, t};
+      if(!t || now-t>=CLIP_TTL) expired.push(item); else list.push(item);
+    }
+    list.sort((a,b)=>b.t-a.t);
+    await Promise.all(list.filter(c=>!clipText.has(c.sha)).map(async c=>{
+      try{ const r=await gh(`${R()}/contents/${encPath(c.path)}?ref=${encodeURIComponent(S.branch)}`,{headers:{Accept:'application/vnd.github.raw+json'}});
+        clipText.set(c.sha, dec.decode(await r.arrayBuffer())); }
+      catch{ clipText.set(c.sha, null); }
+    }));
+    const prev=new Set(clips.map(c=>c.sha));
+    clips = list.map(c=>({...c, text:clipText.get(c.sha), fresh:!prev.has(c.sha)&&clips.length>0}));
+    renderClips();
+    const todo=expired.filter(c=>!clipDeleting.has(c.path));
+    if(todo.length){
+      todo.forEach(c=>clipDeleting.add(c.path));
+      serial(()=>removeMany(todo)).catch(()=>{}).finally(()=>todo.forEach(c=>clipDeleting.delete(c.path)));
+    }
+  }catch(e){ if(e.status===401){ toast(explain(e),true); logout(); } }
+  finally{ clipLoading=false; }
+}
+
+function renderClips(){
+  const box=$('#clips'); if(!box) return;
+  const now=Date.now();
+  const live=clips.filter(c=>now-c.t<CLIP_TTL);
+  if(live.length!==clips.length) clips=live;
+  if(!live.length){
+    box.innerHTML='<div class="clip-empty">Пусто. Отправь текст отсюда или с телефона, и он появится на всех устройствах.</div>';
+    $('#clipMore').hidden=true;
+    return;
+  }
+  const open=new Set([...box.querySelectorAll('.clip.open')].map(el=>el.dataset.p));
+  box.innerHTML = live.map(c=>{
+    const body = c.text==null ? '<span style="color:var(--muted)">Не удалось загрузить текст</span>' : linkify(esc(c.text));
+    return `<div class="clip${open.has(c.path)?' open':''}${c.fresh?' new':''}" data-p="${esc(c.path)}">
+      <div class="clip-text" title="Нажми, чтобы развернуть">${body}</div>
+      <div class="clip-foot"><span class="clip-meta">${when(c.t)} · ${left(c.t)}</span>
+        <button class="btn cp" type="button">Копировать</button>
+        <button class="act del" type="button" aria-label="Удалить"><svg class="i"><use href="#i-trash"/></svg></button></div></div>`;
+  }).join('');
+  live.forEach(c=>c.fresh=false);
+  const more=$('#clipMore'), all=box.classList.contains('all');
+  more.hidden = live.length<=3;
+  more.textContent = all ? 'Свернуть' : `Показать ещё ${live.length-3}`;
+}
+$('#clipMore').onclick=()=>{ $('#clips').classList.toggle('all'); renderClips(); };
+
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch{
+    const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.append(ta); ta.select(); ta.setSelectionRange(0,t.length);
+    let ok=false; try{ ok=document.execCommand('copy'); }catch{}
+    ta.remove(); return ok;
+  }
+}
+
+$('#clips').addEventListener('click', async e=>{
+  const el=e.target.closest('.clip'); if(!el) return;
+  const c=clips.find(x=>x.path===el.dataset.p); if(!c) return;
+  if(e.target.closest('a')) return;
+  if(e.target.closest('.cp')){
+    const b=e.target.closest('.cp');
+    if(c.text!=null && await copyText(c.text)){ b.textContent='Скопировано'; b.classList.add('ok');
+      setTimeout(()=>{ b.textContent='Копировать'; b.classList.remove('ok'); },1600); }
+    else toast('Не получилось скопировать', true);
+    return;
+  }
+  if(e.target.closest('.del')){
+    clips=clips.filter(x=>x!==c); renderClips(); clipDeleting.add(c.path);
+    serial(()=>removeMany([c])).then(()=>toast('Удалено из буфера'))
+      .catch(err=>{ toast(explain(err),true); loadClips(); })
+      .finally(()=>clipDeleting.delete(c.path));
+    return;
+  }
+  if(e.target.closest('.clip-text') && !getSelection().toString()) el.classList.toggle('open');
+});
+
+const clipIn=$('#clipIn');
+function fitClip(){ clipIn.style.height='auto'; clipIn.style.height=Math.min(clipIn.scrollHeight+2,160)+'px'; }
+clipIn.addEventListener('input',fitClip);
+clipIn.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); $('#clipForm').requestSubmit(); } });
+$('#clipForm').onsubmit=e=>{ e.preventDefault(); const v=clipIn.value; if(!v.trim()) return clipIn.focus(); sendClip(v, true); };
+
+async function sendClip(text, fromBox){
+  if(new Blob([text]).size > 900*1024){ toast('Слишком длинный текст, лучше закинь его файлом', true); return; }
+  const t=Date.now(), path=`clips/${t}.txt`, btn=$('#clipSend');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  try{
+    const res = await serial(()=>ghj(`${R()}/contents/${encPath(path)}`,{method:'PUT',
+      body:JSON.stringify({message:'clip', content:utf8b64(text), branch:S.branch})}));
+    const sha=res.content&&res.content.sha;
+    if(sha) clipText.set(sha,text);
+    clips=[{path, sha, t, text, fresh:true}, ...clips.filter(c=>c.path!==path)];
+    renderClips();
+    if(fromBox){ clipIn.value=''; fitClip(); }
+    toast('Отправлено в буфер');
+  }catch(e){ toast(explain(e),true); }
+  finally{ btn.disabled=false; btn.innerHTML='<svg class="i"><use href="#i-up"/></svg>'; }
+}
+
+// живое обновление: новые записи с телефона подтягиваются сами, просроченные исчезают по таймеру
+setInterval(()=>{ if(S && !document.hidden && !$('#app').hidden) loadClips(); }, 15000);
+setInterval(()=>{ if(S && !$('#app').hidden && clips.length) renderClips(); }, 30000);
 
 function enqueue(list){
   for(const file of list){
@@ -936,7 +1121,7 @@ $('#settingsBtn').onclick=()=>{
 };
 $('#refreshBtn').onclick=()=>refresh();
 function logout(){
-  localStorage.removeItem(LS_SESSION); S=null; files=[]; thumbs.forEach(u=>URL.revokeObjectURL(u)); thumbs.clear(); blobCache.clear();
+  localStorage.removeItem(LS_SESSION); S=null; files=[]; clips=[]; clipText.clear(); thumbs.forEach(u=>URL.revokeObjectURL(u)); thumbs.clear(); blobCache.clear();
   $('#queue').innerHTML=''; if(selecting) setSelecting(false);
   boot();
 }
