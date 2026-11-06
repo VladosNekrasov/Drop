@@ -23,6 +23,7 @@
   --body:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-t:env(safe-area-inset-top,0px);
+  --pad:clamp(14px,3vw,36px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--body);
@@ -87,15 +88,18 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .steps b{color:var(--text);font-weight:600}
 
 /* ---------- app shell ---------- */
-.app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:calc(20px + var(--safe-t)) clamp(14px,3vw,36px) calc(110px + var(--safe-b))}
-.top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 var(--pad) calc(110px + var(--safe-b))}
+.top{position:sticky;top:0;z-index:12;display:flex;align-items:center;gap:12px;
+  margin:0 calc(-1 * var(--pad)) 22px;padding:calc(12px + var(--safe-t)) var(--pad) 12px;
+  background:rgba(14,12,20,.78);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+  border-bottom:1px solid rgba(44,39,64,.6)}
 .logo{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:-.04em;
   background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:auto}
 .meter{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--muted);margin-right:6px}
 .meter .bar{width:120px;height:4px;background:var(--surface-3);border-radius:4px;overflow:hidden}
 .meter .bar i{display:block;height:100%;background:var(--grad);width:0;transition:width .4s}
 .layout{display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start}
-.side{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
+.side{position:sticky;top:calc(92px + var(--safe-t));display:flex;flex-direction:column;gap:16px}
 
 /* the portal: the one memorable thing */
 .portal{position:relative;border-radius:var(--r-lg);padding:2px;cursor:pointer;isolation:isolate;
@@ -258,8 +262,7 @@ svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stro
   .mob-only{display:inline}
 }
 @media (max-width:640px){
-  .app{padding-top:calc(14px + var(--safe-t))}
-  .top{margin-bottom:16px;gap:4px}
+  .top{margin-bottom:16px;gap:4px;padding-top:calc(8px + var(--safe-t));padding-bottom:8px}
   .meter{display:none}
   .fab{display:grid}
   .tools{gap:8px}
